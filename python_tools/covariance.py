@@ -93,6 +93,10 @@ def getCrossCovarianceMatrix(data1, data2, norm=False):
 def MultipoleCovariance(handle_mocks, smin, smax, full_fit=True):
         files_mocks = sorted(glob.glob(handle_mocks))
         mock_datavec = []
+        nmocks = len(files_mocks)
+
+        print('nmocks: {}'.format(nmocks))
+
         for fname in files_mocks:
             s, mu, xi_smu_mock = readCorrFile(fname)
             s, xi0 = getMonopole(s, mu, xi_smu_mock)

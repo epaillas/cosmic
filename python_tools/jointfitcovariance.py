@@ -108,6 +108,9 @@ def MultipoleCovariance(handle_mocks, smins, smaxs, full_fit=True):
         nmocks = len(files_mocks['den0'])
         mock_datavec = []
 
+        print('nmocks: {}'.format(nmocks))
+        print('ndenbins: {}'.format(ndenbins))
+
         for i in range(nmocks):
             datavec = np.array([])
             for j in range(ndenbins):
