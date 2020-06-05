@@ -650,7 +650,7 @@ class JointFit:
 
         self.ndenbins = len(delta_r_filenames)
         delta_r_filename = {}
-        int_delta_r_filename  = {}
+        int_delta_r_filename = {}
         xi_r_filename = {}
         sv_filename = {}
         xi_smu_filename = {}
@@ -730,7 +730,7 @@ class JointFit:
 
             # read integrated void-matter correlation function
             data = np.genfromtxt(int_delta_r_filename[denbin])
-            self.r_for_delta = data[:,0]
+            self.r_for_delta[denbin] = data[:,0]
             Delta_r = data[:,-2]
             self.Delta_r[denbin] = InterpolatedUnivariateSpline(self.r_for_delta[denbin], Delta_r, k=3, ext=3)
 
