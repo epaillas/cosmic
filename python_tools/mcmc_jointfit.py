@@ -25,6 +25,7 @@ parser.add_argument('--full_fit', type=int, default=1)
 parser.add_argument('--smin', type=str)
 parser.add_argument('--smax', type=str)
 parser.add_argument('--model', type=int, default=1)
+parser.add_argument('--const_sv', type=int, default=0)
 parser.add_argument('--model_as_truth', type=int, default=0)
 parser.add_argument('--backend_name', type=str)
 parser.add_argument('--ndenbins', type=int)
@@ -44,6 +45,7 @@ if args.model == 1:
                    smins=args.smin,
                    smaxs=args.smax,
                    model=args.model,
+                   const_sv=args.const_sv,
                    model_as_truth=args.model_as_truth)
 
     nwalkers = args.ncores
