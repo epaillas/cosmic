@@ -743,9 +743,9 @@ class JointFit:
                     sv = np.ones(len(self.r_for_sv[denbin]))
                 else:
                     self.sv_converge[denbin] = sv[-1]
-                    sv = sv / self.sv_converge
+                    sv = sv / self.sv_converge[denbin]
                     sv = savgol_filter(sv, 3, 1)
-                self.sv[denbin ]= InterpolatedUnivariateSpline(self.r_for_sv[denbin], sv, k=3, ext=3)
+                self.sv[denbin]= InterpolatedUnivariateSpline(self.r_for_sv[denbin], sv, k=3, ext=3)
 
 
             # read redshift-space correlation function
