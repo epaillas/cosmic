@@ -49,7 +49,7 @@ class SingleFit:
         self.om_m = om_m
         self.s8 = s8
         self.cosmo = Cosmology(om_m=self.om_m)
-        self.nmocks = 300 # hardcoded for Minerva
+        self.nmocks = 299 # hardcoded for Minerva
 
         self.eff_z = eff_z
         self.dA = self.cosmo.get_angular_diameter_distance(self.eff_z)
