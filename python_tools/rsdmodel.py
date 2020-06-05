@@ -130,6 +130,7 @@ class SingleFit:
         if os.path.isfile(self.covmat_filename):
             print('Reading covariance matrix: ' + self.covmat_filename)
             self.cov = np.load(self.covmat_filename)
+            self.icov = np.linalg.inv(self.cov)
         else:
             sys.exit('Covariance matrix not found.')
 
@@ -137,20 +138,12 @@ class SingleFit:
         # restrict measured vectors to the desired fitting scales
         if (self.smax < self.s_for_xi.max()) or (self.smin > self.s_for_xi.min()):
 
-            idx = (self.s_for_xi >= self.smin) & (self.s_for_xi <= self.smax)
+            scales = (self.s_for_xi >= self.smin) & (self.s_for_xi <= self.smax)
 
             # truncate redshift-space data vectors
-            self.s_for_xi = self.s_for_xi[idx]
-            self.xi0_s = self.xi0_s[idx]
-            self.xi2_s = self.xi2_s[idx]
-
-            # truncate covariance matrix
-            # only works for smax cut!
-            smax_idx = np.where(self.s_for_xi == self.smax)[0][0] + 1
-            self.cov = Utilities.truncate_covmat(self.cov, smax_idx)
-
-        # invert covariance matrix
-        self.icov = np.linalg.inv(self.cov)
+            self.s_for_xi = self.s_for_xi[scales]
+            self.xi0_s = self.xi0_s[scales]
+            self.xi2_s = self.xi2_s[scales]
 
         # build data vector
         if self.full_fit:
@@ -632,6 +625,7 @@ class SingleFit:
 class JointFit:
     def __init__(self,
                  delta_r_filenames,
+                 int_delta_r_filenames,
                  xi_r_filenames,
                  xi_smu_filenames,
                  covmat_filename,
@@ -640,9 +634,14 @@ class JointFit:
                  sv_filenames=None,
                  full_fit=1,
                  model=1,
-                 model_as_truth=0):
+                 model_as_truth=0,
+                 const_sv=0,
+                 om_m=0.285,
+                 s8=0.828,
+                 eff_z=0.57):
 
         delta_r_filenames = delta_r_filenames.split(',')
+        int_delta_r_filenames = int_delta_r_filenames.split(',')
         xi_r_filenames = xi_r_filenames.split(',')
         sv_filenames = sv_filenames.split(',')
         xi_smu_filenames = xi_smu_filenames.split(',')
@@ -651,6 +650,7 @@ class JointFit:
 
         self.ndenbins = len(delta_r_filenames)
         delta_r_filename = {}
+        int_delta_r_filename  = {}
         xi_r_filename = {}
         sv_filename = {}
         xi_smu_filename = {}
@@ -659,6 +659,7 @@ class JointFit:
 
         for j in range(self.ndenbins):
             delta_r_filename['den{}'.format(j)] = delta_r_filenames[j]
+            int_delta_r_filename['den{}'.format(j)] = int_delta_r_filenames[j]
             xi_r_filename['den{}'.format(j)] = xi_r_filenames[j]
             sv_filename['den{}'.format(j)] = sv_filenames[j]
             xi_smu_filename['den{}'.format(j)] = xi_smu_filenames[j]
@@ -670,17 +671,16 @@ class JointFit:
         self.full_fit = full_fit
         self.model = model
         self.model_as_truth = model_as_truth
+        self.const_sv = const_sv
 
         print("Setting up redshift-space distortions model.")
 
         # cosmology for Minerva
-        self.om_m = 0.285
-        self.s8 = 0.828
+        self.om_m = om_m
+        self.s8 = s8
         self.cosmo = Cosmology(om_m=self.om_m)
-        self.nmocks = 299
-
-        self.eff_z = 0.57
-        self.b = 2.01
+        self.nmocks = 299 # hardcoded for Minerva
+        self.eff_z = eff_z
 
         self.growth = self.cosmo.get_growth(self.eff_z)
         self.f = self.cosmo.get_f(self.eff_z)
@@ -707,9 +707,10 @@ class JointFit:
         self.xi0_s = {}
         self.xi2_s = {}
 
-        if self.model == 1 or self.model == 3:
+        if self.model == 1 or self.model == 3 or self.model == 4:
             self.r_for_sv = {}
             self.sv = {}
+            self.sv_converge = {}
 
         self.datavec = np.array([])
 
@@ -727,20 +728,25 @@ class JointFit:
             delta_r = data[:,-2]
             self.delta_r[denbin] = InterpolatedUnivariateSpline(self.r_for_delta[denbin], delta_r, k=3, ext=3)
 
-            integral = np.zeros_like(self.r_for_delta[denbin])
-            for i in range(len(integral)):
-                integral[i] = quad(lambda x: self.delta_r[denbin](x) * x ** 2, 0, self.r_for_delta[denbin][i], full_output=1)[0]
-            Delta_r = 3 * integral / self.r_for_delta[denbin] ** 3
+            # read integrated void-matter correlation function
+            data = np.genfromtxt(int_delta_r_filename[denbin])
+            self.r_for_delta = data[:,0]
+            Delta_r = data[:,-2]
             self.Delta_r[denbin] = InterpolatedUnivariateSpline(self.r_for_delta[denbin], Delta_r, k=3, ext=3)
 
-            if self.model == 1 or self.model == 3:
+            if self.model == 1 or self.model == 3 or self.model == 4:
                 # read los velocity dispersion profile
                 data = np.genfromtxt(sv_filename[denbin])
                 self.r_for_sv[denbin] = data[:,0]
-                sv_converge = data[-1, -2]
-                sv = data[:,-2] / sv_converge
-                sv = savgol_filter(sv, 3, 1)
+                sv = data[:,-2]
+                if self.const_sv:
+                    sv = np.ones(len(self.r_for_sv[denbin]))
+                else:
+                    self.sv_converge[denbin] = sv[-1]
+                    sv = sv / self.sv_converge
+                    sv = savgol_filter(sv, 3, 1)
                 self.sv[denbin ]= InterpolatedUnivariateSpline(self.r_for_sv[denbin], sv, k=3, ext=3)
+
 
             # read redshift-space correlation function
             self.s_for_xi[denbin], self.mu_for_xi[denbin], xi_smu_obs = Utilities.readCorrFile(xi_smu_filename[denbin])
@@ -749,7 +755,7 @@ class JointFit:
                 print('Using the model prediction as the measurement.')
                 if self.model == 1:
                     fs8 = self.f * self.s8norm
-                    sigma_v = sv_converge
+                    sigma_v = self.sv_converge[denbin]
                     alpha = 1.0
                     epsilon = 1.0
                     alpha_para = alpha * epsilon ** (-2/3)
@@ -772,9 +778,6 @@ class JointFit:
             scales = (self.s_for_xi[denbin] >= smin[denbin]) & (self.s_for_xi[denbin] <= smax[denbin])
 
             self.s_for_xi[denbin] = self.s_for_xi[denbin][scales]
-            self.r_for_xi[denbin] = self.r_for_xi[denbin][scales]
-            self.r_for_delta[denbin] = self.r_for_delta[denbin][scales]
-            self.r_for_sv[denbin] = self.r_for_sv[denbin][scales]
             self.xi0_s[denbin] = self.xi0_s[denbin][scales]
             self.xi2_s[denbin] = self.xi2_s[denbin][scales]
 
@@ -848,7 +851,9 @@ class JointFit:
 
 
     def model1_theory(self, fs8, sigma_v, alpha_perp, alpha_para, s, mu, denbin):
-
+        '''
+        RSD model from Nadathur & Percival (2018).
+        '''
         monopole = np.zeros(len(s))
         quadrupole = np.zeros(len(s))
         true_mu = np.zeros(len(mu))
@@ -856,7 +861,7 @@ class JointFit:
         scaled_fs8 = fs8 / self.s8norm
 
         # rescale input monopole functions to account for alpha values
-        mus = np.linspace(0, 1., 101)
+        mus = np.linspace(0, 1., 80)
         r = self.r_for_delta[denbin]
         rescaled_r = np.zeros_like(r)
         for i in range(len(r)):
@@ -870,7 +875,7 @@ class JointFit:
         y4 = self.sv[denbin](r)
 
         # build rescaled interpolating functions using the relabelled separation vectors
-        rescaled_xi_r = InterpolatedUnivariateSpline(x, y1, k=3)
+        rescaled_xi_r = InterpolatedUnivariateSpline(x, y1, k=3, ext=3)
         rescaled_delta_r = InterpolatedUnivariateSpline(x, y2, k=3, ext=3)
         rescaled_Delta_r = InterpolatedUnivariateSpline(x, y3, k=3, ext=3)
         rescaled_sv = InterpolatedUnivariateSpline(x, y4, k=3, ext=3)
