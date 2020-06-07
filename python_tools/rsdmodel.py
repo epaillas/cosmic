@@ -798,6 +798,10 @@ class JointFit:
                 fs8, sigma_v1, sigma_v2, sigma_v3, epsilon = theta
                 sigmalist = [sigma_v1, sigma_v2, sigma_v3]
 
+            if self.ndenbins == 5:
+                fs8, sigma_v1, sigma_v2, sigma_v3, sigma_v4, sigma_v5, epsilon = theta
+                sigmalist = [sigma_v1, sigma_v2, sigma_v3, sigma_v4, sigma_v5]
+
         alpha = 1.0
         alpha_para = alpha * epsilon ** (-2/3)
         alpha_perp = epsilon * alpha_para
@@ -844,6 +848,18 @@ class JointFit:
                 and 1 < sigma_v1 < 500 \
                 and 1 < sigma_v2 < 500 \
                 and 1 < sigma_v3 < 500 \
+                and 0.8 < epsilon < 1.2:
+                    return 0.0
+
+            if self.ndenbins == 5:
+                fs8, sigma_v1, sigma_v2, sigma_v3, sigma_v4, sigma_v5, epsilon = theta
+
+                if 0.1 < fs8 < 2.0 \
+                and 1 < sigma_v1 < 500 \
+                and 1 < sigma_v2 < 500 \
+                and 1 < sigma_v3 < 500 \
+                and 1 < sigma_v4 < 500 \
+                and 1 < sigma_v5 < 500 \
                 and 0.8 < epsilon < 1.2:
                     return 0.0
 

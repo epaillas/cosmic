@@ -69,6 +69,16 @@ if args.model == 1:
         start_params = np.array([fs8, sigma_v1, sigma_v2, sigma_v3, epsilon])
         scales = [1, 100, 100, 100, 1]
 
+    if args.ndenbins == 5:
+        ndim = 7
+        sigma_v1 = 360
+        sigma_v2 = 360
+        sigma_v3 = 360
+        sigma_v4 = 360
+        sigma_v5 = 360
+        start_params = np.array([fs8, sigma_v1, sigma_v2, sigma_v3, sigma_v4, sigma_v5, epsilon])
+        scales = [1, 100, 100, 100, 100, 100, 1]
+
     p0 = [start_params + 1e-2 * np.random.randn(ndim) * scales for i in range(nwalkers)]
 
     print('Running emcee with the following parameters:')
