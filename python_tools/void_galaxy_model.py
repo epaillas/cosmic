@@ -210,7 +210,7 @@ class SingleFit:
         scaled_fs8 = fs8 / self.s8norm
 
         # rescale input monopole functions to account for alpha values
-        mus = np.linspace(0, 1., 80)
+        mus = np.linspace(0, 1., 100)
         r = self.r_for_delta
         rescaled_r = np.zeros_like(r)
         for i in range(len(r)):
@@ -256,13 +256,20 @@ class SingleFit:
             # build interpolating function for xi_smu at true_mu
             mufunc = InterpolatedUnivariateSpline(true_mu[np.argsort(true_mu)], xi_model[np.argsort(true_mu)], k=3)
 
-            # get multipoles
-            xaxis = np.linspace(-1, 1, 1000)
+            if true_mu.min() < 0:
+                mumin = -1
+                factor = 2
+            else:
+                mumin = 0
+                factor = 1
 
-            yaxis = mufunc(xaxis) / 2
+            # get multipoles
+            xaxis = np.linspace(mumin, 1, 1000)
+
+            yaxis = mufunc(xaxis) / factor
             monopole[i] = simps(yaxis, xaxis)
 
-            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / 2
+            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
             quadrupole[i] = np.trapz(yaxis, xaxis)
 
             
@@ -318,14 +325,21 @@ class SingleFit:
                                                   xi_model[np.argsort(true_mu)],
                                                   k=3)
 
-            # get multipoles
-            xaxis = np.linspace(-1, 1, 1000)
+            if true_mu.min() < 0:
+                mumin = -1
+                factor = 2
+            else:
+                mumin = 0
+                factor = 1
 
-            yaxis = mufunc(xaxis) / 2
+            # get multipoles
+            xaxis = np.linspace(mumin, 1, 1000)
+
+            yaxis = mufunc(xaxis) / factor
             monopole[i] = simps(yaxis, xaxis)
 
-            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / 2
-            quadrupole[i] = simps(yaxis, xaxis)
+            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
+            quadrupole[i] = np.trapz(yaxis, xaxis)
             
         return monopole, quadrupole
 
@@ -401,14 +415,21 @@ class SingleFit:
                                                   xi_model[np.argsort(true_mu)],
                                                   k=3)
             
-            # get multipoles
-            xaxis = np.linspace(-1, 1, 1000)
+            if true_mu.min() < 0:
+                mumin = -1
+                factor = 2
+            else:
+                mumin = 0
+                factor = 1
 
-            yaxis = mufunc(xaxis) / 2
+            # get multipoles
+            xaxis = np.linspace(mumin, 1, 1000)
+
+            yaxis = mufunc(xaxis) / factor
             monopole[i] = simps(yaxis, xaxis)
 
-            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / 2
-            quadrupole[i] = simps(yaxis, xaxis)
+            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
+            quadrupole[i] = np.trapz(yaxis, xaxis)
             
             
         return monopole, quadrupole
@@ -516,13 +537,20 @@ class SingleFit:
                                                 xi_model[np.argsort(true_mu)],
                                                 k=3)
             
+            if true_mu.min() < 0:
+                mumin = -1
+                factor = 2
+            else:
+                mumin = 0
+                factor = 1
+
             # get multipoles
-            xaxis = np.linspace(-1, 1, 1000)
+            xaxis = np.linspace(mumin, 1, 1000)
 
-            yaxis = mufunc(xaxis) / 2
-            monopole[i] = np.trapz(yaxis, xaxis)
+            yaxis = mufunc(xaxis) / factor
+            monopole[i] = simps(yaxis, xaxis)
 
-            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / 2
+            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
             quadrupole[i] = np.trapz(yaxis, xaxis)
             
             
@@ -540,6 +568,7 @@ class SingleFit:
         xi_model = np.zeros(len(mu))
         scaled_fs8 = fs8 / self.s8norm
         delta_c = 5 # hard coded for now
+
 
         vpec = -1/3 * self.r_for_delta * 1/self.iaH * scaled_fs8 \
                 * delta_c * ((1 + self.Delta_r(self.r_for_delta))**(1/delta_c) - 1)
@@ -608,13 +637,20 @@ class SingleFit:
                                                 xi_model[np.argsort(true_mu)],
                                                 k=3)
             
+            if true_mu.min() < 0:
+                mumin = -1
+                factor = 2
+            else:
+                mumin = 0
+                factor = 1
+
             # get multipoles
-            xaxis = np.linspace(-1, 1, 1000)
+            xaxis = np.linspace(mumin, 1, 1000)
 
-            yaxis = mufunc(xaxis) / 2
-            monopole[i] = np.trapz(yaxis, xaxis)
+            yaxis = mufunc(xaxis) / factor
+            monopole[i] = simps(yaxis, xaxis)
 
-            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / 2
+            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
             quadrupole[i] = np.trapz(yaxis, xaxis)
             
             
@@ -925,14 +961,21 @@ class JointFit:
                                                   xi_model[np.argsort(true_mu)],
                                                   k=3)
             
-            # get multipoles
-            xaxis = np.linspace(-1, 1, 1000)
+            if true_mu.min() < 0:
+                mumin = -1
+                factor = 2
+            else:
+                mumin = 0
+                factor = 1
 
-            yaxis = mufunc(xaxis) / 2
+            # get multipoles
+            xaxis = np.linspace(mumin, 1, 1000)
+
+            yaxis = mufunc(xaxis) / factor
             monopole[i] = simps(yaxis, xaxis)
 
-            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / 2
-            quadrupole[i] = simps(yaxis, xaxis)
+            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
+            quadrupole[i] = np.trapz(yaxis, xaxis)
             
             
         return monopole, quadrupole

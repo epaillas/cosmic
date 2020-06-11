@@ -50,31 +50,54 @@ class Utilities:
         s = np.unique(data[:,0])
         mu = np.unique(data[:,1])
 
+        varymu = False
+        if data[0,0] == data[1,0]:
+            varymu = True
+
         xi_smu = np.zeros([len(s), len(mu)])
         counter = 0
-        for i in range(len(mu)):
-            for j in range(len(s)):
-                xi_smu[j, i] = data[counter, -2]
-                counter += 1
+        if varymu:
+            for i in range(len(s)):
+                for j in range(len(mu)):
+                    xi_smu[i, j] = data[counter, 2]
+                    counter += 1
+        else:
+            for i in range(len(mu)):
+                for j in range(len(s)):
+                    xi_smu[j, i] = data[counter, 2]
+                    counter += 1
         return s, mu, xi_smu
 
     @staticmethod
     def getMonopole(s, mu, xi_smu):
         monopole = np.zeros(xi_smu.shape[0])
+        print('munin={}'.format(mu.min()))
+        if mu.min() < 0:
+            factor = 2
+            mumin = -1
+        else:
+            factor = 1
+            mumin=0
         for i in range(xi_smu.shape[0]):
             mufunc = InterpolatedUnivariateSpline(mu, xi_smu[i, :], k=3)
-            xaxis = np.linspace(-1, 1, 1000)
-            yaxis = mufunc(xaxis) / 2
+            xaxis = np.linspace(mumin, 1, 1000)
+            yaxis = mufunc(xaxis) / factor
             monopole[i] = simps(yaxis, xaxis)
         return s, monopole
 
     @staticmethod
     def getQuadrupole(s, mu, xi_smu):
         quadrupole = np.zeros(xi_smu.shape[0])
+        if mu.min() < 0:
+            factor = 2
+            mumin = -1
+        else:
+            factor = 1
+            mumin = 0
         for i in range(xi_smu.shape[0]):
             mufunc = InterpolatedUnivariateSpline(mu, xi_smu[i, :], k=3)
-            xaxis = np.linspace(-1, 1, 1000)
-            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / 2
+            xaxis = np.linspace(mumin, 1, 1000)
+            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
             quadrupole[i] = simps(yaxis, xaxis)
 
         return s, quadrupole
