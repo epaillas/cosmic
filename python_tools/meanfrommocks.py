@@ -21,8 +21,6 @@ def mean_from_mocks(handle_in,
 
     for mock_file in mock_files:
         data = np.genfromtxt(mock_file)
-        data[np.isnan(data)] = -1
-        data[data == np.inf] = -1
         data_list.append(data)
 
     data_list = np.asarray(data_list)

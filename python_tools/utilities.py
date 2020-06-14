@@ -49,6 +49,7 @@ class Utilities:
         data = np.genfromtxt(fname)
         s = np.unique(data[:,0])
         mu = np.unique(data[:,1])
+        print(len(s),len(mu))
 
         varymu = False
         if data[0,0] == data[1,0]:

@@ -7,12 +7,13 @@ from scipy.integrate import quad, simps, odeint
 from scipy.interpolate import RectBivariateSpline, InterpolatedUnivariateSpline, interp1d
 from scipy.optimize import fsolve
 from scipy.signal import savgol_filter
+from scipy.special import legendre
 
 class SingleFit:
     def __init__(self,
                  xi_r_filename,
                  xi_smu_filename,
-                 covmat_filename,
+                 covmat_filename=None,
                  sv_filename=None,
                  vr_filename=None,
                  full_fit=1,
@@ -62,7 +63,7 @@ class SingleFit:
         # read real-space galaxy monopole
         data = np.genfromtxt(self.xi_r_filename)
         self.r_for_xi = data[:,0]
-        xi_r = data[:,-2]
+        xi_r = data[:,1]
         self.xi_r = InterpolatedUnivariateSpline(self.r_for_xi, xi_r, k=3, ext=3)
 
         integral = np.zeros_like(self.r_for_xi)
@@ -70,6 +71,12 @@ class SingleFit:
             integral[i] = quad(lambda x: self.xi_r(x) * x ** 2, 0, self.r_for_xi[i], full_output=1)[0]
         int_xi_r = 3 * integral / self.r_for_xi ** 3
         self.int_xi_r = InterpolatedUnivariateSpline(self.r_for_xi, int_xi_r, k=3, ext=3)
+
+        integral = np.zeros_like(self.r_for_xi)
+        for i in range(len(integral)):
+            integral[i] = quad(lambda x: self.xi_r(x) * x ** 4, 0, self.r_for_xi[i], full_output=1)[0]
+        int2_xi_r = 5 * integral / self.r_for_xi ** 5
+        self.int2_xi_r = InterpolatedUnivariateSpline(self.r_for_xi, int2_xi_r, k=3, ext=3)
 
 
         # if self.model == 1 or self.model == 3 or self.model == 4:
@@ -95,7 +102,7 @@ class SingleFit:
         #     self.dvr = InterpolatedUnivariateSpline(self.r_for_vr, dvr, k=3, ext=3)
 
         # read redshift-space correlation function
-        self.s_for_xi, self.mu_for_xi, xi_smu_obs = Utilities.readCorrFile(self.xi_smu_filename)
+        self.s_for_xi, self.mu_for_xi, self.xi_smu = Utilities.readCorrFile(self.xi_smu_filename)
 
         # if self.model_as_truth:
         #     print('Using the model prediction as the measurement.')
@@ -114,8 +121,8 @@ class SingleFit:
         #                                                     self.s_for_xi,
         #                                                     self.mu_for_xi)
         # else:
-        s, self.xi0_s = Utilities.getMonopole(self.s_for_xi, self.mu_for_xi, xi_smu_obs)
-        s, self.xi2_s = Utilities.getQuadrupole(self.s_for_xi, self.mu_for_xi, xi_smu_obs)
+        s, self.xi0_s = Utilities.getMonopole(self.s_for_xi, self.mu_for_xi, self.xi_smu)
+        s, self.xi2_s = Utilities.getQuadrupole(self.s_for_xi, self.mu_for_xi, self.xi_smu)
 
         # # read covariance matrix
         # if os.path.isfile(self.covmat_filename):
@@ -165,10 +172,12 @@ class SingleFit:
         x = rescaled_r
         y1 = self.xi_r(r)
         y3 = self.int_xi_r(r)
+        y4 = self.int2_xi_r(r)
 
         # build rescaled interpolating functions using the relabelled separation vectors
         rescaled_xi_r = InterpolatedUnivariateSpline(x, y1, k=3, ext=3)
         rescaled_int_xi_r = InterpolatedUnivariateSpline(x, y3, k=3, ext=3)
+        rescaled_int2_xi_r = InterpolatedUnivariateSpline(x, y4, k=3, ext=3)
 
         for i in range(len(s)):
             for j in range(len(mu)):
@@ -177,13 +186,11 @@ class SingleFit:
                 true_s = np.sqrt(true_spar ** 2. + true_sperp ** 2.)
                 true_mu[j] = true_spar / true_s
 
-                r = true_s * (1 + beta * rescaled_int_xi_r(true_s) * true_mu[j]**2)
+                r = true_s
 
-                xi_model[j] = rescaled_xi_r(r) + scaled_fs8/3 * rescaled_int_xi_r(r) *\
-                            (1 + rescaled_xi_r(r)) + scaled_fs8 * true_mu[j]**2 *\
-                            (rescaled_delta_r(r) - rescaled_int_xi_r(r)) * \
-                            (1 + rescaled_xi_r(r))
-
+                xi_model[j] = legendre(0)(true_mu[j]) * (1 + 2*beta/3 + beta**2/5) * rescaled_xi_r(r) \
+                            + legendre(2)(true_mu[j]) * (4*beta/3 + 4*beta**2/7) * (rescaled_xi_r(r) - rescaled_int_xi_r(r)) \
+                            + legendre(4)(true_mu[j]) * (8*beta**2/5) * (rescaled_xi_r(r) + 5/2 * rescaled_int_xi_r(r) - 7/2 * rescaled_int2_xi_r(r))
 
             # build interpolating function for xi_smu at true_mu
             mufunc = InterpolatedUnivariateSpline(true_mu[np.argsort(true_mu)],
