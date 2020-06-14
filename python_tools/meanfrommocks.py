@@ -33,7 +33,7 @@ def mean_from_mocks(handle_in,
 
     cout = np.c_[data_mean, data_std]
 
-    fmt = np.shape(cout)[1] * '%10.3f '
+    fmt = np.shape(cout)[1] * '%15.5f '
 
     np.savetxt(handle_out, cout, fmt=fmt)
 
