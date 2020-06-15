@@ -1,5 +1,5 @@
 import numpy as np
-from rsdmodel import JointFit
+from void_galaxy_model import JointFit
 import os
 import sys
 import argparse

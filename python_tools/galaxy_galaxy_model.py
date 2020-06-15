@@ -79,20 +79,20 @@ class SingleFit:
         self.int2_xi_r = InterpolatedUnivariateSpline(self.r_for_xi, int2_xi_r, k=3, ext=3)
 
 
-        # if self.model == 1 or self.model == 3 or self.model == 4:
-        #     # read los velocity dispersion profile
-        #     data = np.genfromtxt(self.sv_filename)
-        #     self.r_for_sv = data[:,0]
-        #     sv = data[:,-2]
-        #     if self.const_sv:
-        #         sv = np.ones(len(self.r_for_sv))
-        #     else:
-        #         self.sv_converge = sv[-1]
-        #         sv = sv / self.sv_converge
-        #         sv = savgol_filter(sv, 3, 1)
-        #     self.sv = InterpolatedUnivariateSpline(self.r_for_sv, sv, k=3, ext=3)
+        if self.model == 1:
+            # read los velocity dispersion profile
+            data = np.genfromtxt(self.sv_filename)
+            self.r_for_sv = data[:,0]
+            sv = data[:,-2]
+            if self.const_sv:
+                sv = np.ones(len(self.r_for_sv))
+            else:
+                self.sv_converge = sv[-1]
+                sv = sv / self.sv_converge
+                sv = savgol_filter(sv, 3, 1)
+            self.sv = InterpolatedUnivariateSpline(self.r_for_sv, sv, k=3, ext=3)
 
-        # if self.model == 3 or self.model == 4:
+        # if self.model == 1:
         #     # read radial velocity profile
         #     data = np.genfromtxt(self.vr_filename)
         #     self.r_for_vr = data[:,0]
@@ -149,6 +149,87 @@ class SingleFit:
         # else:
         #     self.datavec = self.xi2_s
         
+    def model1_theory(self, beta, sigma_v, alpha_perp, alpha_para, s, mu):
+        '''
+        Gaussian streaming model
+        '''
+
+        monopole = np.zeros(len(s))
+        quadrupole = np.zeros(len(s))
+        true_mu = np.zeros(len(mu))
+        xi_model = np.zeros(len(mu))
+
+        # rescale input monopole functions to account for alpha values
+        mus = np.linspace(0, 1., 100)
+        r = self.r_for_xi
+        rescaled_r = np.zeros_like(r)
+        for i in range(len(r)):
+            rescaled_r[i] = np.trapz((r[i] * alpha_para) * np.sqrt(1. + (1. - mus ** 2) *
+                            (alpha_perp ** 2 / alpha_para ** 2 - 1)), mus)
+
+        x = rescaled_r
+        y1 = self.xi_r(r)
+        y3 = self.int_xi_r(r)
+        y4 = self.int2_xi_r(r)
+        y5 = self.sv(r)
+        
+
+        # build rescaled interpolating functions using the relabelled separation vectors
+        rescaled_xi_r = InterpolatedUnivariateSpline(x, y1, k=3, ext=3)
+        rescaled_int_xi_r = InterpolatedUnivariateSpline(x, y3, k=3, ext=3)
+        rescaled_int2_xi_r = InterpolatedUnivariateSpline(x, y4, k=3, ext=3)
+        rescaled_sv = InterpolatedUnivariateSpline(x, y5, k=3, ext=3)
+        sigma_v = alpha_para * sigma_v
+
+        for i in range(len(s)):
+            for j in range(len(mu)):
+                true_sperp = s[i] * np.sqrt(1 - mu[j] ** 2) * alpha_perp
+                true_spar = s[i] * mu[j] * alpha_para
+                true_s = np.sqrt(true_spar ** 2. + true_sperp ** 2.)
+                true_mu[j] = true_spar / true_s
+
+                rpar = true_spar
+
+                vpar = -1/3 * beta * 1/self.iaH * true_s * rescaled_int_xi_r(true_s) * true_mu[j]
+
+                sy_central = sigma_v * rescaled_sv(true_s)
+                y = np.linspace(-5 * sy_central, 5 * sy_central, 100)
+
+                vpary = vpar + y
+                rpary = rpar + vpary * self.iaH
+
+                r = np.sqrt(true_sperp**2 + rpary**2)
+                sy = sigma_v * rescaled_sv(r)
+                v = -1/3 * beta * 1/self.iaH * r * rescaled_int_xi_r(r)
+
+                integrand = (1 + rescaled_xi_r(r)) * np.exp(-0.5 * ((vpary - v*true_mu[j]) / sy)**2) / (np.sqrt(2 * np.pi) * sy)
+
+                xi_model[j] = np.trapz(integrand, vpary) - 1
+
+
+            # build interpolating function for xi_smu at true_mu
+            mufunc = InterpolatedUnivariateSpline(true_mu[np.argsort(true_mu)],
+                                                  xi_model[np.argsort(true_mu)],
+                                                  k=3)
+
+            if true_mu.min() < 0:
+                mumin = -1
+                factor = 2
+            else:
+                mumin = 0
+                factor = 1
+
+            # get multipoles
+            xaxis = np.linspace(mumin, 1, 1000)
+
+            yaxis = mufunc(xaxis) / factor
+            monopole[i] = np.trapz(yaxis, xaxis)
+
+            yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
+            quadrupole[i] = np.trapz(yaxis, xaxis)
+            
+        return monopole, quadrupole
+
 
 
     def model2_theory(self, beta, alpha_perp, alpha_para, s, mu):
@@ -208,7 +289,7 @@ class SingleFit:
             xaxis = np.linspace(mumin, 1, 1000)
 
             yaxis = mufunc(xaxis) / factor
-            monopole[i] = simps(yaxis, xaxis)
+            monopole[i] = np.trapz(yaxis, xaxis)
 
             yaxis = mufunc(xaxis) * 5 / 2 * (3 * xaxis**2 - 1) / factor
             quadrupole[i] = np.trapz(yaxis, xaxis)
