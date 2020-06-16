@@ -75,7 +75,7 @@ if args.model == 1:
         sigma_v2 = 360
         sigma_v3 = 360
         sigma_v4 = 360
-        start_params = np.array([fs8, sigma_v1, sigma_v2, sigma_v3, sigma_v4, sigma_v5, epsilon])
+        start_params = np.array([fs8, sigma_v1, sigma_v2, sigma_v3, sigma_v4, epsilon])
         scales = [1, 100, 100, 100, 100, 1]
 
     if args.ndenbins == 5:
