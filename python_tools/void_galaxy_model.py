@@ -74,11 +74,17 @@ class SingleFit:
         delta_r = data[:,-2]
         self.delta_r = InterpolatedUnivariateSpline(self.r_for_delta, delta_r, k=3, ext=3)
 
-        # read integrated void-matter correlation function
-        data = np.genfromtxt(self.int_delta_r_filename)
-        self.r_for_delta = data[:,0]
-        Delta_r = data[:,-2]
+        integral = np.zeros_like(self.r_for_delta)
+        for i in range(len(integral)):
+            integral[i] = quad(lambda x: self.delta_r(x) * x ** 2, 0, self.r_for_delta[i], full_output=1)[0]
+        Delta_r = 3 * integral / self.r_for_delta ** 3
         self.Delta_r = InterpolatedUnivariateSpline(self.r_for_delta, Delta_r, k=3, ext=3)
+
+        # # read integrated void-matter correlation function
+        # data = np.genfromtxt(self.int_delta_r_filename)
+        # self.r_for_delta = data[:,0]
+        # Delta_r = data[:,-2]
+        # self.Delta_r = InterpolatedUnivariateSpline(self.r_for_delta, Delta_r, k=3, ext=3)
 
 
         if self.model == 1 or self.model == 3 or self.model == 4:
@@ -126,13 +132,13 @@ class SingleFit:
             s, self.xi0_s = Utilities.getMonopole(self.s_for_xi, self.mu_for_xi, xi_smu_obs)
             s, self.xi2_s = Utilities.getQuadrupole(self.s_for_xi, self.mu_for_xi, xi_smu_obs)
 
-        # read covariance matrix
-        if os.path.isfile(self.covmat_filename):
-            print('Reading covariance matrix: ' + self.covmat_filename)
-            self.cov = np.load(self.covmat_filename)
-            self.icov = np.linalg.inv(self.cov)
-        else:
-            sys.exit('Covariance matrix not found.')
+        # # read covariance matrix
+        # if os.path.isfile(self.covmat_filename):
+        #     print('Reading covariance matrix: ' + self.covmat_filename)
+        #     self.cov = np.load(self.covmat_filename)
+        #     self.icov = np.linalg.inv(self.cov)
+        # else:
+        #     sys.exit('Covariance matrix not found.')
 
 
         # restrict measured vectors to the desired fitting scales
@@ -833,6 +839,10 @@ class JointFit:
             if self.ndenbins == 3:
                 fs8, sigma_v1, sigma_v2, sigma_v3, epsilon = theta
                 sigmalist = [sigma_v1, sigma_v2, sigma_v3]
+                
+            if self.ndenbins == 4:
+                fs8, sigma_v1, sigma_v2, sigma_v3, sigma_v4, epsilon = theta
+                sigmalist = [sigma_v1, sigma_v2, sigma_v3, sigma_v4]
 
             if self.ndenbins == 5:
                 fs8, sigma_v1, sigma_v2, sigma_v3, sigma_v4, sigma_v5, epsilon = theta
@@ -884,6 +894,17 @@ class JointFit:
                 and 1 < sigma_v1 < 500 \
                 and 1 < sigma_v2 < 500 \
                 and 1 < sigma_v3 < 500 \
+                and 0.8 < epsilon < 1.2:
+                    return 0.0
+
+            if self.ndenbins == 4:
+                fs8, sigma_v1, sigma_v2, sigma_v3, sigma_v4, epsilon = theta
+
+                if 0.1 < fs8 < 2.0 \
+                and 1 < sigma_v1 < 500 \
+                and 1 < sigma_v2 < 500 \
+                and 1 < sigma_v3 < 500 \
+                and 1 < sigma_v4 < 500 \
                 and 0.8 < epsilon < 1.2:
                     return 0.0
 
